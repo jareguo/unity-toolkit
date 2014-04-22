@@ -2,10 +2,10 @@
 using fsm;
 
 /// <summary>
-/// 动画状态机的跳转，实例由AniState.to方法进行创建。
+/// 动画状态机的跳转，实例由AnimState.to方法进行创建。
 /// 主要用于判断什么时候跳转到目标状态，判断方法是所有 设置过的 条件进行与(and)运算，为true才会进行跳转。
 /// 唯一的例外是trigger变量，被设为true后会强制允许跳转，但状态机可能不会立刻执行到。
-/// 如果要多个条件之间进行或(or)运算，可以创建多个AniTransition实例。
+/// 如果要多个条件之间进行或(or)运算，可以创建多个AnimTransition实例。
 /// </summary>
 [System.Serializable]
 public class AniTransition : TimerTransition {
@@ -78,7 +78,7 @@ public class AniTransition : TimerTransition {
 }
 
 /// <summary>
-/// 动画状态机的普通状态
+/// 动画状态机的基本状态，跳转到新状态时将播放对应动作
 /// </summary>
 [System.Serializable]
 public class AniState : State {
@@ -92,9 +92,9 @@ public class AniState : State {
 
     public float normalizedTime {
         get {
-            //AnimationState aniState = anim.GetPlayingAnimation();
+            //AnimationState animState = anim.GetPlayingAnimation();
             AnimationState aniState = anim[curAniName];
-            //Debug.Log(string.Format("aniState: {0} " + aniState.normalizedTime, aniState.name));
+            //Debug.Log(string.Format("animState: {0} " + animState.normalizedTime, animState.name));
             return aniState != null ? aniState.normalizedTime : 0.0f;
         }
     }
@@ -130,19 +130,23 @@ public class AniState : State {
 
     /// <summary> 播放本状态的动作 </summary>
     public virtual void Play (Transition transition) {
-        if (transition == null) {
-            anim.Play(name);
-            curAniName = name;
-            return;
-        }
-        if (string.IsNullOrEmpty(name)) {
+        DoPlay(transition, name);
+    }
+    
+    protected void DoPlay (Transition transition, string animName) {
+        if (string.IsNullOrEmpty(animName)) {
             anim.Stop();
             curAniName = null;
+            return;
+        }
+        if (transition == null ||
+            ((TimerTransition)transition).duration == 0.0f) {   // we got incorrect normalizedTime when using 0 duration in CorssFade
+            anim.Play(animName);
         }
         else {
-            anim.CrossFade(name, ((TimerTransition)transition).duration);
-            curAniName = name;
+            anim.CrossFade(animName, ((TimerTransition)transition).duration);
         }
+        curAniName = animName;
     }
 }
 
@@ -161,14 +165,7 @@ public class RandAniState : AniState {
     }
     
     public override void Play (Transition transition) {
-        var aniName = animList[Random.Range(0, animList.Length)];
-        if (string.IsNullOrEmpty(aniName)) {
-            anim.Stop();
-            curAniName = null;
-        }
-        else {
-            anim.CrossFade(aniName, ((TimerTransition)transition).duration);
-            curAniName = aniName;
-        }
+        var animName = animList[Random.Range(0, animList.Length)];
+        DoPlay(transition, animName);
     }
 }
