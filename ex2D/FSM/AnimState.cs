@@ -8,7 +8,6 @@ namespace fsm {
 /// 唯一的例外是trigger变量，被设为true后会强制允许跳转，但状态机可能不会立刻执行到。
 /// 如果要多个条件之间进行或(or)运算，可以创建多个AnimTransition实例。
 /// </summary>
-[System.Serializable]
 public class AnimTransition : TimerTransition {
 
     /// <summary> 触发动画跳转，不论when、after条件是否满足。 </summary>
@@ -79,7 +78,6 @@ public class AnimTransition : TimerTransition {
 /// <summary>
 /// 动画状态机的基本状态，跳转到新状态时将播放对应动作
 /// </summary>
-[System.Serializable]
 public class AnimState : State {
 
     public Animation anim = null;

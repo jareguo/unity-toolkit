@@ -23,7 +23,6 @@ namespace fsm {
     // State
     ///////////////////////////////////////////////////////////////////////////////
 
-    [System.Serializable]
     public class State {
 
         public enum Mode {
