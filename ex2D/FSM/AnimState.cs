@@ -39,8 +39,7 @@ public class AnimTransition : TimerTransition {
     /// <summary> 限制只有动画播放到了一定的时候才能跳转，和when是与(and)的布尔关系。 </summary>
     /// <param name="_normalizedTime">
     /// 和Mecanim里的Exit Time一样，用于限制退出这个状态所需要的时间。
-    /// 如果是0.5则代表必须等到动画播放到一半后才能切换到其它状态。
-    /// 使用normalizedTime进行判断，例如是2.5则代表要等动画loop 2.5次后才能切换到其它状态。
+    /// 如果是0.5则代表必须等到动画播放到一半后才能切换到其它状态，2.5则代表要等动画loop 2.5次后才能切换到其它状态。
     /// </param>
     public AnimTransition after (float _normalizedTime) {
         exitTime = _normalizedTime;
@@ -54,9 +53,8 @@ public class AnimTransition : TimerTransition {
         }
 
         float normalizedTime = ((AnimState)source).normalizedTime;
-        bool played = normalizedTime == 0.0f;
+        bool played = normalizedTime >= 1.0f;
         if (played) {
-            normalizedTime = 1.0f;
 #if UNITY_EDITOR
             if (exitTime.HasValue != false && exitTime.Value > 1.0f) {
                 var s = (AnimState)source;
@@ -110,6 +108,8 @@ public class AnimState : State {
         anim = _anim;
         mgDebug.Assert(anim != null);
         onFadeIn += Play;
+
+        FixNormalizedTime(_name);
         //onEnter += delegate ( State _from, State _to ) {
         //};
         //onExit += delegate ( State _from, State _to ) {
@@ -130,24 +130,37 @@ public class AnimState : State {
     }
 
     /// <summary> 播放本状态的动作 </summary>
-    public virtual void Play (Transition transition) {
-        DoPlay(transition, name);
+    public virtual void Play (Transition _transition) {
+        DoPlay(_transition, name);
     }
     
-    protected void DoPlay (Transition transition, string animName) {
-        if (string.IsNullOrEmpty(animName)) {
+    protected void DoPlay (Transition _transition, string _animName) {
+        if (string.IsNullOrEmpty(_animName)) {
             anim.Stop();
             curAnimName = null;
             return;
         }
-        if (transition == null ||
-            ((TimerTransition)transition).duration == 0.0f) {   // we got incorrect normalizedTime when using 0 duration in CorssFade
-            anim.Play(animName);
+        if (_animName == curAnimName) {
+            anim.Rewind(_animName);
+        }
+        if (_transition == null || ((TimerTransition)_transition).duration == 0.0f) {
+            anim.Play(_animName);
         }
         else {
-            anim.CrossFade(animName, ((TimerTransition)transition).duration);
+            anim.CrossFade(_animName, ((TimerTransition)_transition).duration);
         }
-        curAnimName = animName;
+        curAnimName = _animName;
+    }
+
+    /// <summary> 
+    /// normalizedTime can not achieve 1.0f when using WrapMode.Once, so we use WrapMode.ClampForever to workaround this.
+    /// In another way, we do change this property because we assumed the FSM always play at least one animation.
+    /// </summary>
+    protected void FixNormalizedTime (string _animName) {
+        AnimationState s = anim[_animName];
+        if (s != null && (s.wrapMode == WrapMode.Default || s.wrapMode == WrapMode.Once)) {
+            s.wrapMode = WrapMode.ClampForever;
+        }
     }
 }
 
@@ -167,6 +180,11 @@ namespace Detail {
             animList = _animList.Split(new char[] { ';' }, System.StringSplitOptions.RemoveEmptyEntries);
             if (animList.Length == 0) {
                 Debug.LogError("no animation is specified");
+                return;
+            }
+
+            foreach(string animName in animList) {
+                FixNormalizedTime(animName);
             }
         }
     }

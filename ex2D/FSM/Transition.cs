@@ -65,7 +65,7 @@ namespace fsm {
                 timer += Time.deltaTime;
 
                 if ( onTick != null )
-                    onTick ( timer/duration );
+                    onTick ( duration != 0.0f ? timer / duration : 0.0f );
 
                 // time up
                 if ( timer >= duration ) {
